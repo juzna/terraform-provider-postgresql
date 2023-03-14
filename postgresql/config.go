@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/lib/pq"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -159,6 +161,7 @@ type Config struct {
 	Username          string
 	Password          string
 	DatabaseUsername  string
+	SetRole           string
 	Superuser         bool
 	SSLMode           string
 	ApplicationName   string
@@ -297,6 +300,25 @@ func (c *Client) Connect() (*DBConnection, error) {
 				db.Close()
 				return nil, fmt.Errorf("error detecting capabilities: %w", err)
 			}
+		}
+
+		// SET ROLE for this whole connection.
+		log.Printf("[INFO] SET ROLE %s", pq.QuoteIdentifier(c.config.SetRole))
+		if c.config.SetRole != "" {
+			tx, err := db.Begin()
+			defer deferredRollback(tx)
+
+			_, err = tx.Exec(fmt.Sprintf("SET ROLE %s", pq.QuoteIdentifier(c.config.SetRole)))
+			if err != nil {
+				return nil, fmt.Errorf("Unable to SET ROLE %s: %w", c.config.SetRole, err)
+			}
+
+			var current_user string
+			err = tx.QueryRow("SELECT current_user").Scan(&current_user)
+			if err != nil {
+				return nil, fmt.Errorf("Unable to check current role: %w", err)
+			}
+			log.Printf("[INFO] Current role is: %s", pq.QuoteIdentifier(current_user))
 		}
 
 		conn = &DBConnection{

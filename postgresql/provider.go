@@ -95,6 +95,13 @@ func Provider() *schema.Provider {
 				Description: "Database username associated to the connected user (for user name maps)",
 			},
 
+			"set_role": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "Database role which will be assumed (via SET ROLE) before executing any changes. Use this if the user that is logging in doesn't have necessary permissions directly, but if it can assume another role with such permissions.",
+			},
+
 			"superuser": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -276,6 +283,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		Username:          username,
 		Password:          password,
 		DatabaseUsername:  d.Get("database_username").(string),
+		SetRole:           d.Get("set_role").(string),
 		Superuser:         d.Get("superuser").(bool),
 		SSLMode:           sslMode,
 		ApplicationName:   "Terraform provider",
